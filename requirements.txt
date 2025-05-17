@@ -1,0 +1,17 @@
+requests
+python-telegram-bot
+google-cloud-storage
+google-cloud-firestore
+
+flask
+
+flask_login
+secret
+
+joblib
+
+numpy
+pandas
+matplotlib
+scikit-learn
+plotly
