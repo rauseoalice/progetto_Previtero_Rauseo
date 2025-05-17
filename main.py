@@ -21,38 +21,32 @@ def index():
     return render_template('index.html')
 
 @app.route('/dati/<name>', methods=['POST'])
-def dati(name):
-    data = request.get_json()
-    if name == 'station':
-        code = data['code']
-        namedist = data['namedist']
-        address = data['address']
-        latitude = data['latitude']
-        longitude = data['longitude']
-        doc_ref = db.collection('station').document(str(code))
-        doc_ref.set({
-            'code': code,
-            'namedist': namedist,
-            'address': address,
-            'latitude': latitude,
-            'longitude': longitude
-        })
-    return '', 200
+def new_data(name):
+    data = request.form
+    code = data['code']
+    namedist = data['namedist']
+    address = data['address']
+    latitude = data['latitude']
+    longitude = data['longitude']
+
+    entity = db.collection('dati').document(name).get()
+    if entity.exists:
+        d = entity.to_dict()
+        d['readings'].append({'code': code, 'namedist': namedist, 'address': address, 'latitude': latitude, 'longitude': longitude})
+        db.collection('dati').document(name).set(d)
+    else:
+        db.collection('dati').document(name).set({'readings':[{'code': code, 'namedist': namedist, 'address': address, 'latitude': latitude, 'longitude': longitude}]})
+    return 'ok', 200
 
 
-@app.route('/dati/<name>', methods=['GET'])
-def get_dati(name):
-    if name == 'station':
-        stations = []
-        docs = db.collection('station').stream()
-        for doc in docs:
-            stations.append(doc.to_dict())
-        return json.dumps(stations), 200
-    return '', 404
-
-
-
-
+@app.route('/dati/<name>',methods=['GET'])
+def read(name):
+    entity = db.collection('dati').document(name).get()
+    if entity.exists:
+        d = entity.to_dict()
+        return json.dumps(d['readings']), 200
+    else:
+        return 'not found', 404
 
 
 
