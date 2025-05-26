@@ -20,33 +20,37 @@ filestorage = storage.Client.from_service_account_json('credentials.json')
 def index():
     return render_template('index.html')
 
-@app.route('/dati/<name>', methods=['POST'])
-def new_data(name):
-    data = request.form
-    code = data['code']
-    namedist = data['namedist']
-    address = data['address']
-    latitude = data['latitude']
-    longitude = data['longitude']
-
-    entity = db.collection('dati').document(name).get()
-    if entity.exists:
-        d = entity.to_dict()
-        d['readings'].append({'code': code, 'namedist': namedist, 'address': address, 'latitude': latitude, 'longitude': longitude})
-        db.collection('dati').document(name).set(d)
-    else:
-        db.collection('dati').document(name).set({'readings':[{'code': code, 'namedist': namedist, 'address': address, 'latitude': latitude, 'longitude': longitude}]})
-    return 'ok', 200
 
 
-@app.route('/dati/<name>',methods=['GET'])
-def read(name):
-    entity = db.collection('dati').document(name).get()
+@app.route('/dati/<dato>',methods=['GET'])
+def read(dato):
+    entity = db.collection('dati').document(dato).get()
     if entity.exists:
         d = entity.to_dict()
         return json.dumps(d['readings']), 200
     else:
         return 'not found', 404
+
+
+
+@app.route('/dati/<dato>', methods=['POST'])
+def new_data(dato):
+    code = request.values['code']
+    namedist = request.values['namedist']
+    address = request.values['address']
+    latitude = request.values['latitude']
+    longitude = request.values['longitude']
+
+    entity = db.collection('dati').document(dato).get()
+    if entity.exists:
+        d = entity.to_dict()
+        d['readings'].append({'code': code, 'namedist': namedist, 'address': address, 'latitude': latitude, 'longitude': longitude})
+        db.collection('dati').document(dato).set(d)
+    else:
+        db.collection('dati').document(dato).set({'readings':[{'code': code, 'namedist': namedist, 'address': address, 'latitude': latitude, 'longitude': longitude}]})
+    return 'ok', 200
+
+
 
 
 
