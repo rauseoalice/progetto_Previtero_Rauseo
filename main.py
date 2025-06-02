@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, url_for
 import json
 from joblib import load
@@ -8,6 +7,8 @@ from secret import secret_key
 from google.cloud import firestore, storage
 import time
 from datetime import datetime, timedelta
+from google.cloud.firestore import SERVER_TIMESTAMP
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -20,6 +21,15 @@ filestorage = storage.Client.from_service_account_json('credentials.json')
 def index():
     return render_template('index.html')
 
+'''
+@app.route('/grafici')
+def grafici():
+    return render_template('grafici.html')
+'''
+
+@app.route('/previsioni')
+def previsione():
+    return render_template('previsioni.html')
 
 
 @app.route('/dati/<dato>',methods=['GET'])
@@ -45,11 +55,11 @@ def read(dato):
 @app.route('/dati/<dato>', methods=['POST'])
 def new_data(dato):
     if dato == 'station':
-        code = request.values['code']
+        code = int(request.values['code'])
         namedist = request.values['namedist']
         address = request.values['address']
-        latitude = request.values['latitude']
-        longitude = request.values['longitude']
+        latitude = float(request.values['latitude'])
+        longitude = float(request.values['longitude'])
 
         entity = db.collection('dati').document(dato).get()
         if entity.exists:
@@ -60,13 +70,13 @@ def new_data(dato):
             db.collection('dati').document(dato).set({'readings':[{'code': code, 'namedist': namedist, 'address': address, 'latitude': latitude, 'longitude': longitude}]})
         return 'ok', 200
     elif dato == 'item':
-        item_code = request.values['item_code']
+        item_code = int(request.values['item_code'])
         item_name = request.values['item_name']
         unit = request.values['unit']
-        good = request.values['good']
-        normal = request.values['normal']
-        bad = request.values['bad']
-        very_bad = request.values['very_bad']
+        good = float(request.values['good'])
+        normal = float(request.values['normal'])
+        bad = float(request.values['bad'])
+        very_bad = float(request.values['very_bad'])
 
         entity = db.collection('dati').document(dato).get()
         if entity.exists:
@@ -83,10 +93,14 @@ def new_data(dato):
 
 @app.route('/valori/<dato>', methods=['GET'])
 def read_values(dato):
-    entity = db.collection('dati').document(dato).get()
+    entity = db.collection('valori').document(dato).get()
     if entity.exists:
         d = entity.to_dict()
-        return json.dumps(d['readings']), 200
+        readings = d['readings']
+        for r in readings:
+            if isinstance(r.get('data'), datetime):
+                r['data'] = r['data'].strftime('%Y-%m-%d %H:%M:%S')
+        return json.dumps(readings), 200
     else:
         return 'not found', 404
 
@@ -94,30 +108,130 @@ def read_values(dato):
 
 @app.route('/valori/<dato>', methods=['POST'])
 def new_values(dato):
-    data = request.values['data']
-    code = request.values['code']
+    
+    data = datetime.strptime((request.values['data']), '%Y-%m-%d %H:%M:%S')
+    
+    code = int(request.values['code'])
     address = request.values['address']
-    latitude = request.values['latitude']
-    longitude = request.values['longitude']
-    SO2 = request.values['SO2']
-    NO2 = request.values['NO2']
-    O3 = request.values['O3']
-    CO = request.values['CO']
-    PM10 = request.values['PM10']
-    PM25 = request.values['PM25']
+    latitude = float(request.values['latitude'])
+    longitude = float(request.values['longitude'])
+    SO2 = float(request.values['SO2'])
+    NO2 = float(request.values['NO2'])
+    O3 = float(request.values['O3'])
+    CO = float(request.values['CO'])
+    PM10 = float(request.values['PM10'])
+    PM25 = float(request.values['PM25'])
 
-    entity = db.collection('dati').document(dato).get()
+    entity = db.collection('valori').document(dato).get()
     if entity.exists:
         d = entity.to_dict()
-        d['readings'].append({'data': data, 'code': code, 'address': address, 'latitude': latitude, 'longitude': longitude,
-                                  'SO2': SO2, 'NO2': NO2, 'O3': O3, 'CO': CO, 'PM10': PM10, 'PM25': PM25})
-        db.collection('dati').document(dato).set(d)
+        d['readings'].append({'data': data, 'code': code, 'address': address, 'latitude': latitude, 'longitude': longitude,'SO2': SO2, 'NO2': NO2, 'O3': O3, 'CO': CO, 'PM10': PM10, 'PM25': PM25})
+        db.collection('valori').document(dato).set(d)
     else:
-        db.collection('dati').document(dato).set({'readings':[{'data': data, 'code': code, 'address': address, 
-                                                                   'latitude': latitude, 'longitude': longitude,
-                                                                   'SO2': SO2, 'NO2': NO2, 'O3': O3, 
-                                                                   'CO': CO, 'PM10': PM10, 'PM25': PM25}]})
+        db.collection('valori').document(dato).set({'readings':[{'data': data, 'code': code, 'address': address, 'latitude': latitude, 'longitude': longitude,'SO2': SO2, 'NO2': NO2, 'O3': O3, 'CO': CO, 'PM10': PM10, 'PM25': PM25}]})
     return 'ok', 200
+
+
+@app.route('/grafici')
+def grafici():
+    docs = db.collection('valori').stream()
+    so2, no2, o3, co, pm10, pm25 = [], [], [], [], [], []
+    for doc in docs:
+        d = doc.to_dict()
+        if 'readings' in d:
+            for r in d['readings']:
+                data_str = r['data'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(r['data'], datetime) else str(r['data'])
+                so2.append([data_str, r.get('SO2')])
+                no2.append([data_str, r.get('NO2')])
+                o3.append([data_str, r.get('O3')])
+                co.append([data_str, r.get('CO')])
+                pm10.append([data_str, r.get('PM10')])
+                pm25.append([data_str, r.get('PM25')])
+    return render_template(
+        'grafici.html',
+        data_so2=json.dumps(so2),
+        data_no2=json.dumps(no2),
+        data_o3=json.dumps(o3),
+        data_co=json.dumps(co),
+        data_pm10=json.dumps(pm10),
+        data_pm25=json.dumps(pm25)
+    )
+
+
+'''
+#SO2
+def graph_so2():
+    docs = db.collection('valori').stream()
+    x2 = []
+    for doc in docs:
+        d = doc.to_dict()
+        if 'readings' in d:
+            for r in d['readings']:
+                data_str = r['data'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(r['data'], datetime) else str(r['data'])
+                x2.append([data_str, r['SO2']])
+    x_json = json.dumps(x2)
+    return render_template('grafici.html', data=x_json, so2="SO2")
+# NO2
+def graph_no2():
+    docs1 = db.collection('valori').stream()
+    x3 = []
+    for doc in docs1:
+        d1 = doc.to_dict()
+        if 'readings' in d1:
+            for r in d1['readings']:
+                data_str = r['data'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(r['data'], datetime) else str(r['data'])
+                x3.append([data_str, r['NO2']])
+    x_json_no2 = json.dumps(x3)
+    return render_template('grafici.html', data_no2=x_json_no2, no2="NO2")
+# O3
+def graph_o3():
+    docs = db.collection('valori').stream()
+    x2 = []
+    for doc in docs:
+        d = doc.to_dict()
+        if 'readings' in d:
+            for r in d['readings']:
+                data_str = r['data'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(r['data'], datetime) else str(r['data'])
+                x2.append([data_str, r['O3']])
+    x_json = json.dumps(x2)
+    return render_template('grafici.html', data=x_json, o3="O3")
+# CO
+def graph_co():
+    docs = db.collection('valori').stream()
+    x2 = []
+    for doc in docs:
+        d = doc.to_dict()
+        if 'readings' in d:
+            for r in d['readings']:
+                data_str = r['data'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(r['data'], datetime) else str(r['data'])
+                x2.append([data_str, r['CO']])
+    x_json = json.dumps(x2)
+    return render_template('grafici.html', data=x_json, co="CO")
+# PM10
+def graph_pm10():
+    docs = db.collection('valori').stream()
+    x2 = []
+    for doc in docs:
+        d = doc.to_dict()
+        if 'readings' in d:
+            for r in d['readings']:
+                data_str = r['data'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(r['data'], datetime) else str(r['data'])
+                x2.append([data_str, r['PM10']])
+    x_json = json.dumps(x2)
+    return render_template('grafici.html', data=x_json, pm10="PM10")
+# PM2.5
+def graph_pm25():
+    docs = db.collection('valori').stream()
+    x2 = []
+    for doc in docs:
+        d = doc.to_dict()
+        if 'readings' in d:
+            for r in d['readings']:
+                data_str = r['data'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(r['data'], datetime) else str(r['data'])
+                x2.append([data_str, r['PM25']])
+    x_json = json.dumps(x2)
+    return render_template('grafici.html', data=x_json, pm25="PM25")
+'''
 
 
 

@@ -21,10 +21,14 @@ with open('Measurement_station_info.csv') as f:
             code, namedist = first_part.split(',', 1)
             address = second_part
             latitude, longitude = third_part_good.split(',',1)
+
+            code = int(code)
+            latitude = float(latitude)
+            longitude = float(longitude)
                     
             post(f'{server}/dati/{name}', data={
-                        'code': int(code), 'namedist': namedist, 'address': address,
-                        'latitude': float(latitude), 'longitude': float(longitude)
+                        'code': code, 'namedist': namedist, 'address': address,
+                        'latitude': latitude, 'longitude': longitude
                 })
                     
             print(code, namedist, address, latitude, longitude)
@@ -39,13 +43,21 @@ with open('Measurement_item_info.csv') as f:
         line = line.strip()
         if line:
             parts = line.split(',')
-            item_code = int(parts[0])
+            item_code = parts[0]
             item_name = parts[1]
             unit = parts[2]
-            good = float(parts[3])
-            normal = float(parts[4])
-            bad = float(parts[5])
-            very_bad = float(parts[6])
+            good = parts[3]
+            normal = parts[4]
+            bad = parts[5]
+            very_bad = parts[6]
+
+
+            item_code = int(item_code)
+            good = float(good)
+            normal = float(normal)
+            bad = float(bad)
+            very_bad = float(very_bad)
+            
             
             post(f'{server}/dati/{name}', data={
                 'item_code': item_code,
