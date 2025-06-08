@@ -1,3 +1,4 @@
+<!DOCTYPE HTML>
 
 <html>
 	<head>
@@ -6,22 +7,48 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 		<link rel="stylesheet" href="../static/assets/css/main.css" />
 		<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+		<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBwCAI3UPbxVbR9k6uZGnJTibggfWiNYtc"></script>
 		<!--SO2-->
+		
 		<script>
 			google.charts.load('current', {packages: ['corechart', 'line']});
 			google.charts.setOnLoadCallback(drawBasic);
 
 			function drawBasic() {
 				var d_so2 = {{ data_so2|safe }};
+				// Prepara i dati: [time, value, style]
+				var dataArr = [];
+				for (var i = 0; i < d_so2.length; i++) {
+					var t = d_so2[i][0];
+					var v = d_so2[i][1];
+					var idx = d_so2[i][2];
+					// Scegli il colore in base all'indice
+					var color = '#2196f3'; // blu
+					if(idx === 'normal') color = '#4caf50'; // verde
+					else if(idx === 'bad') color = '#ffeb3b'; // giallo
+					else if(idx === 'very_bad') color = '#f44336'; // rosso
+					dataArr.push([t, v, color]);
+				}
+
 				var data = new google.visualization.DataTable();
 				data.addColumn('string', 'time');
 				data.addColumn('number', 'SO2');
-				data.addRows(d_so2);
+				data.addColumn({type: 'string', role: 'style'});
+
+				data.addRows(dataArr);
+
 				var options = {
-					hAxis: {
-					title: 'Time'},
-					vAxis: {title: '{{so2}}'}
+					hAxis: { title: 'Time', gridlines: { count: 10 }, 
+						// Formattazione dell'asse X per visualizzare le date
+						format: 'MMM dd, HH:mm', slantedText: true, slantedTextAngle: 45,
+						textStyle: { fontSize: 10},
+					},
+					vAxis: { title: 'SO2' },
+					pointSize: 7,
+					series: {0: {color: '#888'}}, // linea grigia unica
+					legend: 'none'
 				};
+
 				var chart = new google.visualization.LineChart(document.getElementById('chart_div_so2'));
 				chart.draw(data, options);
 			}
@@ -32,34 +59,76 @@
 
 			function drawBasic1() {
 				var d_no2 = {{ data_no2|safe }};
+				var dataArr = [];
+				for (var i = 0; i < d_no2.length; i++) {
+					var t = d_no2[i][0];
+					var v = d_no2[i][1];
+					var idx = d_no2[i][2];
+					var color = '#2196f3'; // blu
+					if(idx === 'normal') color = '#4caf50'; // verde
+					else if(idx === 'bad') color = '#ffeb3b'; // giallo
+					else if(idx === 'very_bad') color = '#f44336'; // rosso
+					dataArr.push([t, v, color]);
+				}
+
 				var data = new google.visualization.DataTable();
 				data.addColumn('string', 'time');
 				data.addColumn('number', 'NO2');
-				data.addRows(d_no2);
+				data.addColumn({type: 'string', role: 'style'});
+				data.addRows(dataArr);
+
 				var options = {
-					hAxis: {
-					title: 'Time'},
-					vAxis: {title: '{{no2}}'}
+					hAxis: { title: 'Time', gridlines: { count: 10 }, 
+						// Formattazione dell'asse X per visualizzare le date
+						format: 'MMM dd, HH:mm', slantedText: true, slantedTextAngle: 45,
+						textStyle: { fontSize: 10},
+					},
+					vAxis: { title: 'NO2' },
+					pointSize: 7,
+					series: {0: {color: '#888'}},
+					legend: 'none'
 				};
+
 				var chart = new google.visualization.LineChart(document.getElementById('chart_div_no2'));
 				chart.draw(data, options);
 			}
 		</script>
 		<!--O3-->
 		<script>
-			google.charts.setOnLoadCallback(drawBasic1);
+			google.charts.setOnLoadCallback(drawBasicO3);
 
-			function drawBasic1() {
+			function drawBasicO3() {
 				var d_o3 = {{ data_o3|safe }};
+				var dataArr = [];
+				for (var i = 0; i < d_o3.length; i++) {
+					var t = d_o3[i][0];
+					var v = d_o3[i][1];
+					var idx = d_o3[i][2];
+					var color = '#2196f3'; // blu
+					if(idx === 'normal') color = '#4caf50'; // verde
+					else if(idx === 'bad') color = '#ffeb3b'; // giallo
+					else if(idx === 'very_bad') color = '#f44336'; // rosso
+					dataArr.push([t, v, color]);
+				}
+
 				var data = new google.visualization.DataTable();
 				data.addColumn('string', 'time');
 				data.addColumn('number', 'O3');
-				data.addRows(d_o3);
+				data.addColumn({type: 'string', role: 'style'});
+				data.addRows(dataArr);
+
 				var options = {
-					hAxis: {
-					title: 'Time'},
-					vAxis: {title: '{{o3}}'}
+					hAxis: { title: 'Time', gridlines: { count: 10 }, 
+						// Formattazione dell'asse X per visualizzare le date
+						format: 'MMM dd, HH:mm', slantedText: true, slantedTextAngle: 45,
+						textStyle: { fontSize: 10},
+					},
+					vAxis: { title: 'O3' },
+					pointSize: 7,
+					series: {0: {color: '#888'}}, // linea grigia unica
+					legend: 'none'
 				};
+
 				var chart = new google.visualization.LineChart(document.getElementById('chart_div_o3'));
 				chart.draw(data, options);
 			}
@@ -70,15 +139,36 @@
 
 			function drawBasic1() {
 				var d_co = {{ data_co|safe }};
+				var dataArr = [];
+				for (var i = 0; i < d_co.length; i++) {
+					var t = d_co[i][0];
+					var v = d_co[i][1];
+					var idx = d_co[i][2];
+					var color = '#2196f3'; // blu
+					if(idx === 'normal') color = '#4caf50'; // verde
+					else if(idx === 'bad') color = '#ffeb3b'; // giallo
+					else if(idx === 'very_bad') color = '#f44336'; // rosso
+					dataArr.push([t, v, color]);
+				}
+
 				var data = new google.visualization.DataTable();
 				data.addColumn('string', 'time');
 				data.addColumn('number', 'CO');
-				data.addRows(d_co);
+				data.addColumn({type: 'string', role: 'style'});
+				data.addRows(dataArr);
+
 				var options = {
-					hAxis: {
-					title: 'Time'},
-					vAxis: {title: '{{co}}'}
+					hAxis: { title: 'Time', gridlines: { count: 10 }, 
+						// Formattazione dell'asse X per visualizzare le date
+						format: 'MMM dd, HH:mm', slantedText: true, slantedTextAngle: 45,
+						textStyle: { fontSize: 10},
+					},
+					vAxis: { title: 'CO' },
+					pointSize: 7,
+					series: {0: {color: '#888'}}, // linea grigia unica
+					legend: 'none'
 				};
+
 				var chart = new google.visualization.LineChart(document.getElementById('chart_div_co'));
 				chart.draw(data, options);
 			}
@@ -89,15 +179,36 @@
 
 			function drawBasic2() {
 				var d_pm10 = {{ data_pm10|safe }};
+				var dataArr = [];
+				for (var i = 0; i < d_pm10.length; i++) {
+					var t = d_pm10[i][0];
+					var v = d_pm10[i][1];
+					var idx = d_pm10[i][2];
+					var color = '#2196f3'; // blu
+					if(idx === 'normal') color = '#4caf50'; // verde
+					else if(idx === 'bad') color = '#ffeb3b'; // giallo
+					else if(idx === 'very_bad') color = '#f44336'; // rosso
+					dataArr.push([t, v, color]);
+				}
+
 				var data = new google.visualization.DataTable();
 				data.addColumn('string', 'time');
 				data.addColumn('number', 'PM10');
-				data.addRows(d_pm10);
+				data.addColumn({type: 'string', role: 'style'});
+				data.addRows(dataArr);
+
 				var options = {
-					hAxis: {
-					title: 'Time'},
-					vAxis: {title: '{{pm10}}'}
+					hAxis: { title: 'Time', gridlines: { count: 10 }, 
+						// Formattazione dell'asse X per visualizzare le date
+						format: 'MMM dd, HH:mm', slantedText: true, slantedTextAngle: 45,
+						textStyle: { fontSize: 10},
+					},
+					vAxis: { title: 'PM10' },
+					pointSize: 7,
+					series: {0: {color: '#888'}}, // linea grigia unica
+					legend: 'none'
 				};
+
 				var chart = new google.visualization.LineChart(document.getElementById('chart_div_pm10'));
 				chart.draw(data, options);
 			}
@@ -108,20 +219,120 @@
 
 			function drawBasic3() {
 				var d_pm25 = {{ data_pm25|safe }};
+				var dataArr = [];
+				for (var i = 0; i < d_pm25.length; i++) {
+					var t = d_pm25[i][0];
+					var v = d_pm25[i][1];
+					var idx = d_pm25[i][2];
+					var color = '#2196f3'; // blu
+					if(idx === 'normal') color = '#4caf50'; // verde
+					else if(idx === 'bad') color = '#ffeb3b'; // giallo
+					else if(idx === 'very_bad') color = '#f44336'; // rosso
+					dataArr.push([t, v, color]);
+				}
+
 				var data = new google.visualization.DataTable();
 				data.addColumn('string', 'time');
 				data.addColumn('number', 'PM2.5');
-				data.addRows(d_pm25);
+				data.addColumn({type: 'string', role: 'style'});
+				data.addRows(dataArr);
+
 				var options = {
-					hAxis: {
-					title: 'Time'},
-					vAxis: {title: '{{pm25}}'}
+					hAxis: { title: 'Time', gridlines: { count: 10 }, 
+						// Formattazione dell'asse X per visualizzare le date
+						format: 'MMM dd, HH:mm', slantedText: true, slantedTextAngle: 45,
+						textStyle: { fontSize: 10},
+					},
+					vAxis: { title: 'PM2.5' },
+					pointSize: 7,
+					series: {0: {color: '#888'}}, // linea grigia unica
+					legend: 'none'
 				};
+
 				var chart = new google.visualization.LineChart(document.getElementById('chart_div_pm25'));
 				chart.draw(data, options);
-			}	
+			}
 		</script>
+
+		<script>
+			function initMap() {
+				var stationCoords = {{ station_coords|safe }};
+				var center = {lat: 37.5665, lng: 126.9780};
+				if (stationCoords.length > 0) {
+					center = {
+						lat: parseFloat(stationCoords[0][0]),
+						lng: parseFloat(stationCoords[0][1])
+					};
+				}
+				var map = new google.maps.Map(document.getElementById('map_markers_div'), {
+					zoom: 11,
+					center: center
+				});
+				for (let i = 0; i < stationCoords.length; i++) {
+					let lat = parseFloat(stationCoords[i][0]);
+					let lon = parseFloat(stationCoords[i][1]);
+					let name = stationCoords[i][2];
+					let marker = new google.maps.Marker({
+						position: {lat: lat, lng: lon},
+						map: map,
+						title: name
+					});
+					// Mostra lat, lon e nome in una infowindow al click
+					let infowindow = new google.maps.InfoWindow({
+						content: "<b>" + name + "</b><br>Lat: " + lat + "<br>Lon: " + lon
+					});
+					marker.addListener('click', function() {
+						infowindow.open(map, marker);
+					});
+				}
+			}
+			window.onload = initMap;
+		</script>
+
+		<script>
+			google.charts.setOnLoadCallback(drawGeneralQuality);
+
+			function drawGeneralQuality() {
+				var d_gen = {{ general_quality|safe }};
+				var dataArr = [];
+				for (var i = 0; i < d_gen.length; i++) {
+					var t = d_gen[i][0];
+					var v = d_gen[i][1];
+					var idx = d_gen[i][2];
+					var color = '#2196f3'; // blu
+					if(idx === 'normal') color = '#4caf50'; // verde
+					else if(idx === 'bad') color = '#ffeb3b'; // giallo
+					else if(idx === 'very_bad') color = '#f44336'; // rosso
+					dataArr.push([t, v, color]);
+				}
+
+				var data = new google.visualization.DataTable();
+				data.addColumn('string', 'time');
+				data.addColumn('number', 'Qualità Aria');
+				data.addColumn({type: 'string', role: 'style'});
+				data.addRows(dataArr);
+
+				var options = {
+					hAxis: { title: 'Time', gridlines: { count: 10 }, 
+						// Formattazione dell'asse X per visualizzare le date
+						format: 'MMM dd, HH:mm', slantedText: true, slantedTextAngle: 45,
+						textStyle: { fontSize: 10},
+					},
+
+					vAxis: { title: 'Indice Qualità Aria (1=Good, 10=Very Bad)' },
+					pointSize: 7,
+					series: {0: {color: '#888'}},
+					legend: 'none'
+				};
+
+				var chart = new google.visualization.LineChart(document.getElementById('chart_div_general'));
+				chart.draw(data, options);
+			}
+		</script>
+
+	
 	</head>
+
 	<body class="is-preload">
 
 		<!-- Wrapper -->
@@ -141,36 +352,67 @@
 									<header class="major">
 										<h2>Grafici</h2>
 									</header>
-									<p>Qui troverete i grafici con i dati aggiornati sulla qualità dell'aria a Seul.</p>
+									<p>Benvenuti nella sezione dedicata ai grafici sulla qualità dell'aria a Seul. Qui potrete trovare informazioni dettagliate sui livelli di inquinamento atmosferico, inclusi i principali inquinanti come PM2.5, PM10, SO2, NO2, O3 e CO.</p>
 									
-									<ul>
-										<li>
-											<h3>Grafico SO2</h3>
-											<div id="chart_div_so2"></div>
-											
-										</li>
-										<li>
-											<h3>Grafico NO2</h3>
-											<div id="chart_div_no2"></div>
-										</li>
-										<li>
-											<h3>Grafico O3</h3>
-											<div id="chart_div_o3"></div>
-										</li>
-										<li>
-											<h3>Grafico CO</h3>
-											<div id="chart_div_co"></div>
-										</li>
-										<li>
-											<h3>Grafico PM10</h3>
-											<div id="chart_div_pm10"></div>
-										</li>
-										<li>
-											<h3>Grafico PM2.5</h3>
-											<div id="chart_div_pm25"></div>
-										</li>
-									</ul>
 
+									<br>
+									<h2>Stazioni di monitoraggio</h2>
+									<p>Di seguito, vengono mostrate le stazioni di monitoraggio della qualità dell'aria a Seul.</p>
+									<div id="map_markers_div" style="width: 100%; height: 500px;"></div>
+
+									
+									<br>
+									<br>
+									<h2>Grafico Generale della Qualità dell'Aria</h2>
+									<p>Questo grafico mostra l'andamento generale della qualità dell'aria a Seul, con i dati aggregati da tutte le stazioni di monitoraggio.
+									<br> Ogni punto rappresenta un intervallo di tempo specifico e il colore indica la qualità dell'aria in quel momento.</p>
+									<div id="chart_div_general" style="width: 100%; height: 500px;"> </div>
+
+									<br>
+									<p>Per ogni inquinante, il colore del punto indica la qualità dell'aria:</p>
+									<ul>
+										<li><span style="color: #2196f3;">Blu</span> - Qualità dell'aria buona</li>
+										<li><span style="color: #4caf50;">Verde</span> - Qualità dell'aria normale</li>
+										<li><span style="color: #ffeb3b;">Giallo</span> - Qualità dell'aria scadente</li>
+										<li><span style="color: #f44336;">Rosso</span> - Qualità dell'aria molto scadente</li>
+									</ul>
+									
+
+									<h3>Grafico SO2</h3>
+									<p>Grafico che mostra i livelli di SO2 (Diossido di zolfo) a Seul.</p>
+									<div id="chart_div_so2" style="width: 100%; height: 500px;"></div>
+
+									<br>
+									<h3>Grafico NO2</h3>
+									<p>Grafico che mostra i livelli di NO2 (Diossido di azoto) a Seul.</p>
+									<div id="chart_div_no2" style="width: 100%; height: 500px;"></div>
+
+									<br>
+									<h3>Grafico O3</h3>
+									<p>Grafico che mostra i livelli di O3 (Ozono) a Seul.</p>
+									<div id="chart_div_o3" style="width: 100%; height: 500px;"></div>
+
+									<br>
+									<h3>Grafico CO</h3>
+									<p>Grafico che mostra i livelli di CO (Monossido di carbonio) a Seul.</p>
+									<div id="chart_div_co" style="width: 100%; height: 500px;"></div>
+
+									<br>
+									<h3>Grafico PM10</h3>
+									<p>Grafico che mostra i livelli di PM10 (Particolato atmosferico con diametro inferiore a 10 micrometri) a Seul.</p>
+									<div id="chart_div_pm10" style="width: 100%; height: 500px;"></div>
+
+									<br>
+									<h3>Grafico PM2.5</h3>
+									<p>Grafico che mostra i livelli di PM2.5 (Particolato atmosferico con diametro inferiore a 2.5 micrometri) a Seul.</p>
+									<div id="chart_div_pm25" style="width: 100%; height: 500px;"></div>
+
+									<br>
+									<br>
+									<p>Grazie per aver visitato la nostra pagina sui grafici della qualità dell'aria a Seul. Speriamo che queste informazioni vi siano utili per comprendere meglio lo stato dell'aria nella capitale sudcoreana e per prendere decisioni informate sulla vostra salute e sul vostro benessere.</p>
+									<p>Per ulteriori informazioni, non esitate a contattarci o a visitare le nostre altre pagine.</p>
+
+									
 								</section>
 
 									
