@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from google.cloud.firestore import SERVER_TIMESTAMP
 from datetime import datetime
 from collections import defaultdict
+f
 
 app = Flask(__name__)
 
@@ -26,12 +27,13 @@ def index():
 @app.route('/grafici')
 def grafici():
     return render_template('grafici.html')
-'''
+
 
 @app.route('/previsioni')
 def previsione():
     return render_template('previsioni.html')
 
+'''
 
 @app.route('/dati/<dato>',methods=['GET'])
 def read(dato):
@@ -278,7 +280,42 @@ def grafici():
         general_quality=json.dumps(general_quality)
     )
 
+def f_next_date(last_date):
+    data = datetime.strptime(last_date, "%Y-%m-%d %H:%M:%S")
+    # Calcolo del giorno successivo
+    next_date = data + timedelta(days=1)
+    # Conversione di nuovo in stringa
+    return next_date.strftime("%Y-%m-%d %H:%M:%S")
 
+@app.route('/previsioni')
+def previsione():
+    #time.sleep(10)
+    entity = db.collection('valori').document('summary').get()
+    if entity.exists:
+        x = entity.to_dict()['readings']
+        x2 = []
+        for d in x:
+            x2.append([d['data'], d['SO2']])
+        
+        model = load('progetto_Previtero_Rauseo/model.joblib') 
+        y = []
+
+        next_date1 = f_next_date(x2[-1][0])
+        history = [x2[-1][1],x2[-2][1],x2[-3][1]]
+        predictions =[model.predict([history])]
+        y.append([next_date1,float(predictions[0][0])])
+
+        next_date2 = f_next_date(next_date1)
+        history = [y[-1][1],x2[-1][1],x2[-2][1]]
+        predictions =[model.predict([history])]
+        y.append([next_date2,float(predictions[0][0])])
+
+
+        x2 = x2 + y
+        x = str(x2)
+        return render_template('previsioni.html', data=x, sensor=sensor)    
+    else:
+        return 'not found', 404
 
 
 
