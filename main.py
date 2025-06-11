@@ -242,7 +242,6 @@ def grafici():
 
     # Calcola la qualità generale per ogni ora
     general_quality = []
-    # Usa le ore comuni a tutti gli inquinanti
     ore = set([x[0] for x in so2]) & set([x[0] for x in no2]) & set([x[0] for x in o3]) & set([x[0] for x in co]) & set([x[0] for x in pm10]) & set([x[0] for x in pm25])
     for hour in sorted(ore):
         idxs = []
@@ -253,7 +252,6 @@ def grafici():
                     break
         if idxs:
             avg_score = sum(idxs) / len(idxs)
-            # Assegna il range generale
             if avg_score <= 1.5:
                 idx = 'good'
             elif avg_score <= 2.5:
@@ -264,7 +262,12 @@ def grafici():
                 idx = 'very_bad'
             general_quality.append([hour, avg_score, idx])
 
-
+    # Salva general_quality su Firestore
+    general_quality_dicts = [
+        {'data': hour, 'avg_score': avg_score, 'index': idx}
+        for hour, avg_score, idx in general_quality
+    ]
+    db.collection('valori').document('general_quality').set({'readings': general_quality_dicts})
 
 
     return render_template(
