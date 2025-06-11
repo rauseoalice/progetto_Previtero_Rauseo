@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from google.cloud.firestore import SERVER_TIMESTAMP
 from datetime import datetime
 from collections import defaultdict
-f
+
 
 app = Flask(__name__)
 
@@ -267,7 +267,7 @@ def grafici():
         {'data': hour, 'avg_score': avg_score, 'index': idx}
         for hour, avg_score, idx in general_quality
     ]
-    db.collection('valori').document('general_quality').set({'readings': general_quality_dicts})
+    db.collection('valori').document('media').set({'readings': general_quality_dicts})
 
 
     return render_template(
@@ -283,22 +283,24 @@ def grafici():
         general_quality=json.dumps(general_quality)
     )
 
-def f_next_date(last_date):
-    data = datetime.strptime(last_date, "%Y-%m-%d %H:%M:%S")
+def f_next_date(last_hour):
     # Calcolo del giorno successivo
-    next_date = data + timedelta(days=1)
+    next_hour = last_hour + timedelta(hours=1)
     # Conversione di nuovo in stringa
-    return next_date.strftime("%Y-%m-%d %H:%M:%S")
+    return next_hour.strftime("%Y-%m-%d %H:%M:%S")
 
 @app.route('/previsioni')
 def previsione():
     #time.sleep(10)
-    entity = db.collection('valori').document('summary').get()
+
+
+    '''
+    entity = db.collection('valori').document('media').get()
     if entity.exists:
         x = entity.to_dict()['readings']
         x2 = []
         for d in x:
-            x2.append([d['data'], d['SO2']])
+            x2.append([d['data'], d['avg_score']])
         
         model = load('progetto_Previtero_Rauseo/model.joblib') 
         y = []
@@ -318,7 +320,42 @@ def previsione():
         x = str(x2)
         return render_template('previsioni.html', data=x, sensor=sensor)    
     else:
+        return 'not found', 404'''
+
+
+
+    # Recupera la serie storica della qualità dell'aria generale
+    entity = db.collection('valori').document('media').get()
+    if entity.exists:
+        readings = entity.to_dict()['readings']
+        # Ordina per data
+        readings.sort(key=lambda x: x['data'])
+        # Prendi solo avg_score (o index se vuoi classificazione)
+        history = [r['avg_score'] for r in readings]
+        last_date = readings[-1]['data']
+
+        model = load('progetto_Previtero_Rauseo/model.joblib')  # Usa il tuo modello, o uno addestrato per questo scopo
+        predictions = []
+        dates = []
+
+        # Previsione per le prossime 24 ore (1 ora alla volta)
+        for i in range(24):
+            # Usa le ultime 3 osservazioni come input (adatta se il modello è autoregressivo)
+            input_history = history[-3:]
+            pred = model.predict([input_history])[0]
+            # Calcola la prossima data
+            next_date = f_next_date(last_date)
+            predictions.append({'data': next_date, 'avg_score': float(pred)})
+            dates.append(next_date)
+            # Aggiorna history e last_date per la prossima iterazione
+            history.append(pred)
+            last_date = next_date
+
+        # Puoi passare predictions al template o restituirle come JSON
+        return render_template('previsioni.html', previsioni_qualita=json.dumps(predictions))
+    else:
         return 'not found', 404
+
 
 
 
