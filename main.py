@@ -334,7 +334,7 @@ def previsione():
         history = [r['avg_score'] for r in readings]
         last_date = readings[-1]['data']
 
-        model = load('progetto_Previtero_Rauseo/model.joblib')  # Usa il tuo modello, o uno addestrato per questo scopo
+        model = load('progetto_Previtero_Rauseo/models/model.joblib')  # Usa il tuo modello, o uno addestrato per questo scopo
         predictions = []
         dates = []
 
