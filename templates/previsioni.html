@@ -16,7 +16,7 @@
 			google.charts.setOnLoadCallback(drawGeneralQuality);
 
 			function drawGeneralQuality() {
-				var d_gen1 = {{ previsioni_qualita|safe }};
+				var d_gen1 = {{ predictions|safe }};
 				var dataArr = [];
 				for (var i = 0; i < d_gen1.length; i++) {
 					var t = d_gen1[i][0];
@@ -61,7 +61,29 @@
 								<header id="header">
 									<a href="/" class="logo"><strong>Progetto Previtero-Rauseo</strong></a>
 								</header>
-								<div id="chart_div_general_previsioni" style="width: 100%; height: 500px;"> </div>
+								<section id="content">
+									<h2>Previsioni</h2>
+									<p>Visualizza le previsioni della qualità dell'aria a Seul</p>
+									<div id="chart_div_general_previsioni" style="width: 100%; height: 500px;"> </div>
+
+									<section>
+									<h3>Lista previsioni</h3>
+									<ul>
+										{% for p in predictions_data %}
+										<li>{{ p.data }}: {{ p.avg_score }}</li>
+										{% endfor %}
+									</ul>
+									</section>
+
+									<section>
+										<h3>history</h3>
+										<ul>
+											{% for h in history %}
+											<li>{{ h }}</li>
+											{% endfor %}
+										</ul>
+								</section>
+
 
 							<!-- Content -->
 								

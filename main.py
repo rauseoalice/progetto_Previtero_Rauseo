@@ -161,8 +161,14 @@ def grafici():
         if 'readings' in d:
             for r in d['readings']:
                 data = r['data']
+                # Normalizza: se stringa, parse; se aware, rendi naive
                 if isinstance(data, str):
-                    data = datetime.strptime(data, '%Y-%m-%d %H:%M:%S')
+                    try:
+                        data = datetime.strptime(data, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        data = datetime.fromisoformat(data)
+                if hasattr(data, 'tzinfo') and data.tzinfo is not None:
+                    data = data.replace(tzinfo=None)
                 r['data'] = data
                 all_readings.append(r)
                 lat = r.get('latitude')
@@ -284,45 +290,15 @@ def grafici():
     )
 
 def f_next_date(last_hour):
-    # Calcolo del giorno successivo
+    # Se last_hour è una stringa, converti in datetime
+    if isinstance(last_hour, str):
+        last_hour = datetime.strptime(last_hour, "%Y-%m-%d %H:%M:%S")
     next_hour = last_hour + timedelta(hours=1)
-    # Conversione di nuovo in stringa
     return next_hour.strftime("%Y-%m-%d %H:%M:%S")
 
 @app.route('/previsioni')
 def previsione():
-    #time.sleep(10)
-
-
-    '''
-    entity = db.collection('valori').document('media').get()
-    if entity.exists:
-        x = entity.to_dict()['readings']
-        x2 = []
-        for d in x:
-            x2.append([d['data'], d['avg_score']])
-        
-        model = load('progetto_Previtero_Rauseo/model.joblib') 
-        y = []
-
-        next_date1 = f_next_date(x2[-1][0])
-        history = [x2[-1][1],x2[-2][1],x2[-3][1]]
-        predictions =[model.predict([history])]
-        y.append([next_date1,float(predictions[0][0])])
-
-        next_date2 = f_next_date(next_date1)
-        history = [y[-1][1],x2[-1][1],x2[-2][1]]
-        predictions =[model.predict([history])]
-        y.append([next_date2,float(predictions[0][0])])
-
-
-        x2 = x2 + y
-        x = str(x2)
-        return render_template('previsioni.html', data=x, sensor=sensor)    
-    else:
-        return 'not found', 404'''
-
-
+    #time.sleep(30)
 
     # Recupera la serie storica della qualità dell'aria generale
     entity = db.collection('valori').document('media').get()
@@ -334,14 +310,15 @@ def previsione():
         history = [r['avg_score'] for r in readings]
         last_date = readings[-1]['data']
 
-        model = load('progetto_Previtero_Rauseo/model.joblib')  # Usa il tuo modello, o uno addestrato per questo scopo
+        model = load('model.joblib')  # Usa il tuo modello, o uno addestrato per questo scopo
         predictions = []
         dates = []
+        
 
         # Previsione per le prossime 24 ore (1 ora alla volta)
         for i in range(24):
-            # Usa le ultime 3 osservazioni come input (adatta se il modello è autoregressivo)
-            input_history = history[-3:]
+            # Usa le ultime 4 osservazioni come input (adatta se il modello è autoregressivo)
+            input_history = history[-4:]
             pred = model.predict([input_history])[0]
             # Calcola la prossima data
             next_date = f_next_date(last_date)
@@ -350,9 +327,10 @@ def previsione():
             # Aggiorna history e last_date per la prossima iterazione
             history.append(pred)
             last_date = next_date
-
+            
+        
         # Puoi passare predictions al template o restituirle come JSON
-        return render_template('previsioni.html', previsioni_qualita=json.dumps(predictions))
+        return render_template('previsioni.html', predictions=json.dumps(predictions), predictions_data = predictions, history=history)
     else:
         return 'not found', 404
 
