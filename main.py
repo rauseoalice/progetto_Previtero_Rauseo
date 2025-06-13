@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 import json
-from joblib import load
+from joblib import dump,load
 from flask import Flask,redirect,url_for, request, session
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required, UserMixin
 from secret import secret_key
@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from google.cloud.firestore import SERVER_TIMESTAMP
 from datetime import datetime
 from collections import defaultdict
-
+f
 
 app = Flask(__name__)
 
