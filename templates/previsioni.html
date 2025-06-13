@@ -16,11 +16,11 @@
 			google.charts.setOnLoadCallback(drawGeneralQuality);
 
 			function drawGeneralQuality() {
-				var d_gen = {{ general_quality|safe }};
+				var d_gen1 = {{ previsioni_qualita|safe }};
 				var dataArr = [];
-				for (var i = 0; i < d_gen.length; i++) {
-					var t = d_gen[i][0];
-					var v = d_gen[i][1];
+				for (var i = 0; i < d_gen1.length; i++) {
+					var t = d_gen1[i][0];
+					var v = d_gen1[i][1];
 					dataArr.push([t, v]);
 				}
 
@@ -43,7 +43,7 @@
 					legend: 'none'
 				};
 
-				var chart = new google.visualization.LineChart(document.getElementById('chart_div_general'));
+				var chart = new google.visualization.LineChart(document.getElementById('chart_div_general_previsioni'));
 				chart.draw(data, options);
 			}
 		</script>
@@ -61,7 +61,7 @@
 								<header id="header">
 									<a href="/" class="logo"><strong>Progetto Previtero-Rauseo</strong></a>
 								</header>
-								<div id="chart_div_general" style="width: 100%; height: 500px;"> </div>
+								<div id="chart_div_general_previsioni" style="width: 100%; height: 500px;"> </div>
 
 							<!-- Content -->
 								

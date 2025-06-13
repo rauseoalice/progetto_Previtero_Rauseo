@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from google.cloud.firestore import SERVER_TIMESTAMP
 from datetime import datetime
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
 
 app = Flask(__name__)
@@ -175,12 +176,16 @@ def grafici():
     # Ordina tutti i readings per data
     all_readings.sort(key=lambda x: x['data'])
 
+
     # Trova la data più recente
     if all_readings:
         last_time = all_readings[-1]['data']
+        last_time = datetime.strptime(last_time, "%Y-%m-%d %H:%M:%S")
         first_time = last_time - timedelta(hours=24)
+        first_time = first_time.strftime("%Y-%m-%d %H:%M:%S")
         # Filtra solo le ultime 24 ore
         filtered = [r for r in all_readings if first_time <= r['data'] <= last_time]
+        
     else:
         filtered = []
 
@@ -260,6 +265,8 @@ def grafici():
                 idx = 'bad'
             else:
                 idx = 'very_bad'
+            hour = datetime.strptime(hour + ':00', '%Y-%m-%d %H:%M:%S')
+            avg_score = float(avg_score)
             general_quality.append([hour, avg_score, idx])
 
     # Salva general_quality su Firestore
@@ -283,9 +290,22 @@ def grafici():
         general_quality=json.dumps(general_quality)
     )
 
-def f_next_date(last_hour):
+'''def f_next_date(last_hour):
     # Calcolo del giorno successivo
     next_hour = last_hour + timedelta(hours=1)
+    # Conversione di nuovo in stringa
+    return next_hour.strftime("%Y-%m-%d %H:%M:%S")'''
+
+def f_next_date(last_hour):
+    
+    # Se last_hour è una stringa, convertila in datetime
+    if isinstance(last_hour, str):
+        dt = datetime.strptime(last_hour, "%Y-%m-%d %H:%M:%S")
+    else:
+        dt = last_hour
+    
+    # Calcolo dell'ora successiva
+    next_hour = dt + timedelta(hours=1)
     # Conversione di nuovo in stringa
     return next_hour.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -328,13 +348,21 @@ def previsione():
     entity = db.collection('valori').document('media').get()
     if entity.exists:
         readings = entity.to_dict()['readings']
-        # Ordina per data
+        # IMPORTANTE: Converti le stringhe data in datetime objects
+        for r in readings:
+            if isinstance(r['data'], str):
+                r['data'] = datetime.strptime(r['data'], '%Y-%m-%d %H:%M:%S')
+        
+        # Ordina per data (ora sono datetime objects)
         readings.sort(key=lambda x: x['data'])
         # Prendi solo avg_score (o index se vuoi classificazione)
         history = [r['avg_score'] for r in readings]
         last_date = readings[-1]['data']
 
-        model = load('progetto_Previtero_Rauseo/models/model.joblib')  # Usa il tuo modello, o uno addestrato per questo scopo
+        model = load('model.joblib')  # Usa il tuo modello, o uno addestrato per questo scopo
+
+        #dump(model, 'progetto_Previtero_Rauseo/models/model.joblib')
+
         predictions = []
         dates = []
 
