@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from google.cloud.firestore import SERVER_TIMESTAMP
 from datetime import datetime
 from collections import defaultdict
-f
+
 
 app = Flask(__name__)
 
