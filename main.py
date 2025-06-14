@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from google.cloud.firestore import SERVER_TIMESTAMP
 from datetime import datetime
 from collections import defaultdict
+import pandas as pd
 
 
 app = Flask(__name__)
@@ -298,6 +299,56 @@ def f_next_date(last_hour):
 
 @app.route('/previsioni')
 def previsione():
+    time.sleep(5)  # Simula un ritardo per la previsione
+    
+    # Recupera la serie storica della qualità dell'aria generale
+    entity = db.collection('valori').document('media').get()
+    if entity.exists:
+        readings = entity.to_dict()['readings']
+        x2 = []
+        for d in readings:
+            x2.append([d['data'], d['avg_score']])
+        
+        if len(x2) < 3:
+            return 'not enough data', 400
+        
+        model = load('model.joblib')
+        predictions = []
+        last_hour = x2[-1][0]
+        first_last_hour = last_hour
+        x2_serializable = []
+
+        for i in range(24):
+            next_hour = f_next_date(last_hour)
+            # Usa le ultime 3 osservazioni per la previsione
+            history = [x2[-3][1], x2[-2][1], x2[-1][1]]
+            # Elimina warning sklearn passando un DataFrame con nomi colonne
+            feature_names = ['val-1', 'val-2', 'val-3']
+            input_df = pd.DataFrame([history], columns=feature_names)
+            pred = model.predict(input_df)[0]
+            predictions.append({'data': next_hour, 'avg_score': float(pred)})
+            
+            x2.append([next_hour, float(pred)])
+            last_hour = next_hour  # Aggiorna l'ora per la prossima iterazione
+
+        x2_serializable = [
+            [dt.strftime("%Y-%m-%d %H:%M:%S") if isinstance(dt, datetime) else dt, val]
+            for dt, val in x2
+        ]
+
+        # Passa predictions come JSON al template
+        return render_template(
+            'previsioni.html',
+            predictions=json.dumps(x2_serializable),
+            predictions_data=predictions,
+            history=x2_serializable,
+            first_last_hour=first_last_hour
+        )
+    else:
+        return 'not found', 404
+
+
+'''def previsione():
     #time.sleep(30)
 
     # Recupera la serie storica della qualità dell'aria generale
@@ -318,8 +369,11 @@ def previsione():
         # Previsione per le prossime 24 ore (1 ora alla volta)
         for i in range(24):
             # Usa le ultime 4 osservazioni come input (adatta se il modello è autoregressivo)
-            input_history = history[-4:]
-            pred = model.predict([input_history])[0]
+            input_history = history[-3:]
+            feature_names = ['val-1', 'val-2', 'val-3']
+            input_df = pd.DataFrame([input_history], columns=feature_names)
+            pred = model.predict(input_df)[0]
+            #pred = model.predict([input_history])[0]
             # Calcola la prossima data
             next_date = f_next_date(last_date)
             predictions.append({'data': next_date, 'avg_score': float(pred)})
@@ -332,9 +386,7 @@ def previsione():
         # Puoi passare predictions al template o restituirle come JSON
         return render_template('previsioni.html', predictions=json.dumps(predictions), predictions_data = predictions, history=history)
     else:
-        return 'not found', 404
-
-
+        return 'not found', 404'''
 
 
 

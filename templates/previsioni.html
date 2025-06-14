@@ -13,34 +13,50 @@
 		<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 		<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBwCAI3UPbxVbR9k6uZGnJTibggfWiNYtc"></script>
 		<script>
+			// Carica la libreria di visualizzazione e il pacchetto corechart
+			google.charts.load('current', {'packages':['corechart']});
 			google.charts.setOnLoadCallback(drawGeneralQuality);
 
 			function drawGeneralQuality() {
 				var d_gen1 = {{ predictions|safe }};
 				var dataArr = [];
-				for (var i = 0; i < d_gen1.length; i++) {
+				var forecastArr = [];
+				var total = d_gen1.length;
+				var split = total - 24;
+
+				for (var i = 0; i < total; i++) {
 					var t = d_gen1[i][0];
 					var v = d_gen1[i][1];
-					dataArr.push([t, v]);
+					if (i < split) {
+						dataArr.push([t, v, null]);         // Serie storica: valore, null per forecast
+						forecastArr.push([t, null, null]);  // Serie forecast: null, nessun valore
+					} else {
+						dataArr.push([t, null, null]);      // Serie storica: null
+						forecastArr.push([t, v, null]);     // Serie forecast: valore
+					}
 				}
 
 				var data = new google.visualization.DataTable();
 				data.addColumn('string', 'time');
-				data.addColumn('number', 'Qualità Aria');
-				data.addColumn({type: 'string', role: 'style'});
-				data.addRows(dataArr);
+				data.addColumn('number', 'Storico');
+				data.addColumn('number', 'Previsione');
+
+				data.addRows(dataArr.map(function(row, i) {
+					return [row[0], row[1], forecastArr[i][1]];
+				}));
 
 				var options = {
 					hAxis: { title: 'Time', gridlines: { count: 10 }, 
-						// Formattazione dell'asse X per visualizzare le date
 						format: 'MMM dd, HH:mm', slantedText: true, slantedTextAngle: 45,
 						textStyle: { fontSize: 10},
 					},
-
-					vAxis: { title: 'Indice Qualità Aria (1=Good, 10=Very Bad)' },
+					vAxis: { title: 'Indice Qualità Aria' },
 					pointSize: 7,
-					series: {0: {color: '#888'}},
-					legend: 'none'
+					series: {
+						0: {color: '#888'},           // Storico: grigio
+						1: {color: 'deepskyblue'}    // Previsione: azzurro
+					},
+					legend: 'right',
 				};
 
 				var chart = new google.visualization.LineChart(document.getElementById('chart_div_general_previsioni'));
@@ -62,26 +78,25 @@
 									<a href="/" class="logo"><strong>Progetto Previtero-Rauseo</strong></a>
 								</header>
 								<section id="content">
-									<h2>Previsioni</h2>
+									<header class="major">
+										<h2>Previsione</h2>
+									</header>
+									
 									<p>Visualizza le previsioni della qualità dell'aria a Seul</p>
 									<div id="chart_div_general_previsioni" style="width: 100%; height: 500px;"> </div>
+									
+									<br>
+									<br>
+									<br>
+									<h3>Dettagli delle previsioni</h3>
+									<p>Le previsioni della qualità dell'aria sono calcolate utilizzando un modello di regressione lineare basato sui dati storici raccolti nelle ultime 24 ore.</p>
+									<p>Il modello analizza le tendenze passate e fornisce una stima della qualità dell'aria per le prossime 24 ore.</p>
+									<p>Le previsioni sono visualizzate in un grafico che mostra sia i dati storici che le previsioni future.</p>
+									<p>Le previsioni sono aggiornate ogni ora e forniscono un'indicazione della qualità dell'aria attesa per le prossime 24 ore.</p>
+									<p>Per maggiori dettagli, consulta la sezione <a href="/grafici">Grafici</a>.</p>
+									
+				
 
-									<section>
-									<h3>Lista previsioni</h3>
-									<ul>
-										{% for p in predictions_data %}
-										<li>{{ p.data }}: {{ p.avg_score }}</li>
-										{% endfor %}
-									</ul>
-									</section>
-
-									<section>
-										<h3>history</h3>
-										<ul>
-											{% for h in history %}
-											<li>{{ h }}</li>
-											{% endfor %}
-										</ul>
 								</section>
 
 
