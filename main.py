@@ -348,45 +348,7 @@ def previsione():
         return 'not found', 404
 
 
-'''def previsione():
-    #time.sleep(30)
 
-    # Recupera la serie storica della qualità dell'aria generale
-    entity = db.collection('valori').document('media').get()
-    if entity.exists:
-        readings = entity.to_dict()['readings']
-        # Ordina per data
-        readings.sort(key=lambda x: x['data'])
-        # Prendi solo avg_score (o index se vuoi classificazione)
-        history = [r['avg_score'] for r in readings]
-        last_date = readings[-1]['data']
-
-        model = load('model.joblib')  # Usa il tuo modello, o uno addestrato per questo scopo
-        predictions = []
-        dates = []
-        
-
-        # Previsione per le prossime 24 ore (1 ora alla volta)
-        for i in range(24):
-            # Usa le ultime 4 osservazioni come input (adatta se il modello è autoregressivo)
-            input_history = history[-3:]
-            feature_names = ['val-1', 'val-2', 'val-3']
-            input_df = pd.DataFrame([input_history], columns=feature_names)
-            pred = model.predict(input_df)[0]
-            #pred = model.predict([input_history])[0]
-            # Calcola la prossima data
-            next_date = f_next_date(last_date)
-            predictions.append({'data': next_date, 'avg_score': float(pred)})
-            dates.append(next_date)
-            # Aggiorna history e last_date per la prossima iterazione
-            history.append(pred)
-            last_date = next_date
-            
-        
-        # Puoi passare predictions al template o restituirle come JSON
-        return render_template('previsioni.html', predictions=json.dumps(predictions), predictions_data = predictions, history=history)
-    else:
-        return 'not found', 404'''
 
 
 
@@ -394,4 +356,4 @@ def previsione():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    app.run(host='0.0.0.0', debug=True)
