@@ -2,7 +2,7 @@
 from requests import get, post
 import time
 
-server = 'http://127.0.0.1'
+server = 'http://127.0.0.1:8080'
 name = 'station'
 
 
