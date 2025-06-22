@@ -1,5 +1,3 @@
-#DA ELIMINARE ALLA FINE
-
 from flask import Flask, render_template, request, redirect, url_for
 import json
 from joblib import load
@@ -11,6 +9,9 @@ import time
 from datetime import datetime, timedelta
 from google.cloud.firestore import SERVER_TIMESTAMP
 from datetime import datetime
+from collections import defaultdict
+import pandas as pd
+
 
 app = Flask(__name__)
 
@@ -27,12 +28,13 @@ def index():
 @app.route('/grafici')
 def grafici():
     return render_template('grafici.html')
-'''
+
 
 @app.route('/previsioni')
 def previsione():
     return render_template('previsioni.html')
 
+'''
 
 @app.route('/dati/<dato>',methods=['GET'])
 def read(dato):
@@ -137,43 +139,142 @@ def new_values(dato):
 @app.route('/grafici')
 def grafici():
     docs = db.collection('valori').stream()
-    so2, no2, o3, co, pm10, pm25 = [], [], [], [], [], []
+    all_readings = []
 
     station_doc = db.collection('dati').document('station').get()
     stations = []
     if station_doc.exists:
         stations = station_doc.to_dict().get('readings', [])
 
-    # Funzione per trovare il nome della stazione
     def get_station_name(lat, lon, stations):
         for s in stations:
             if abs(float(s['latitude']) - float(lat)) < 1e-6 and abs(float(s['longitude']) - float(lon)) < 1e-6:
                 return s['namedist']
         return "Stazione sconosciuta"
 
-    # Lista per il nuovo grafico (senza duplicati)
     station_coords = []
 
+    
+
+    # Raccogli tutti i readings in una lista unica
     for doc in docs:
         d = doc.to_dict()
         if 'readings' in d:
             for r in d['readings']:
-                data_str = r['data'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(r['data'], datetime) else str(r['data'])
-                so2.append([data_str, r.get('SO2')])
-                no2.append([data_str, r.get('NO2')])
-                o3.append([data_str, r.get('O3')])
-                co.append([data_str, r.get('CO')])
-                pm10.append([data_str, r.get('PM10')])
-                pm25.append([data_str, r.get('PM25')])
+                data = r['data']
+                # Normalizza: se stringa, parse; se aware, rendi naive
+                if isinstance(data, str):
+                    try:
+                        data = datetime.strptime(data, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        data = datetime.fromisoformat(data)
+                if hasattr(data, 'tzinfo') and data.tzinfo is not None:
+                    data = data.replace(tzinfo=None)
+                r['data'] = data
+                all_readings.append(r)
                 lat = r.get('latitude')
                 lon = r.get('longitude')
                 if lat is not None and lon is not None:
                     nome = get_station_name(lat, lon, stations)
-                    # Salva solo se non già presente
                     if [lat, lon, nome] not in station_coords:
                         station_coords.append([lat, lon, nome])
-    
 
+    # Ordina tutti i readings per data
+    all_readings.sort(key=lambda x: x['data'])
+
+    # Trova la data più recente
+    if all_readings:
+        last_time = all_readings[-1]['data']
+        first_time = last_time - timedelta(hours=24)
+        # Filtra solo le ultime 24 ore
+        filtered = [r for r in all_readings if first_time <= r['data'] <= last_time]
+    else:
+        filtered = []
+
+    # Recupera i range degli item
+    item_doc = db.collection('dati').document('item').get()
+    item_ranges = {}
+    if item_doc.exists:
+        for item in item_doc.to_dict().get('readings', []):
+            name = item['item_name']  # es: 'SO2'
+            item_ranges[name] = {
+                'good': float(item['good']),
+                'normal': float(item['normal']),
+                'bad': float(item['bad']),
+                'very_bad': float(item['very_bad'])
+            }
+
+    def get_index(val, ranges):
+        if val <= ranges['good']:
+            return 'good'
+        elif val <= ranges['normal']:
+            return 'normal'
+        elif val <= ranges['bad']:
+            return 'bad'
+        else:
+            return 'very_bad'
+
+    def hourly_avg(filtered, key, ranges):
+        by_hour = defaultdict(list)
+        for r in filtered:
+            hour = r['data'].replace(minute=0, second=0, microsecond=0)
+            value = r.get(key)
+            if value is not None:
+                by_hour[hour].append(value)
+        result = []
+        for hour in sorted(by_hour):
+            avg = sum(by_hour[hour]) / len(by_hour[hour])
+            idx = get_index(avg, ranges)
+            result.append([hour.strftime('%Y-%m-%d %H:%M:%S'), avg, idx])
+        return result
+
+    so2 = hourly_avg(filtered, 'SO2', item_ranges['SO2'])
+    no2 = hourly_avg(filtered, 'NO2', item_ranges['NO2'])
+    o3 = hourly_avg(filtered, 'O3', item_ranges['O3'])
+    co = hourly_avg(filtered, 'CO', item_ranges['CO'])
+    pm10 = hourly_avg(filtered, 'PM10', item_ranges['PM10'])
+    pm25 = hourly_avg(filtered, 'PM25', item_ranges['PM2.5'])
+
+    def index_score(idx):
+        if idx == 'good':
+            return 1
+        elif idx == 'normal':
+            return 2
+        elif idx == 'bad':
+            return 6
+        elif idx == 'very_bad':
+            return 10
+        return 0
+
+
+    # Calcola la qualità generale per ogni ora
+    general_quality = []
+    ore = set([x[0] for x in so2]) & set([x[0] for x in no2]) & set([x[0] for x in o3]) & set([x[0] for x in co]) & set([x[0] for x in pm10]) & set([x[0] for x in pm25])
+    for hour in sorted(ore):
+        idxs = []
+        for serie in [so2, no2, o3, co, pm10, pm25]:
+            for x in serie:
+                if x[0] == hour:
+                    idxs.append(index_score(x[2]))
+                    break
+        if idxs:
+            avg_score = sum(idxs) / len(idxs)
+            if avg_score <= 1.5:
+                idx = 'good'
+            elif avg_score <= 2.5:
+                idx = 'normal'
+            elif avg_score <= 3.5:
+                idx = 'bad'
+            else:
+                idx = 'very_bad'
+            general_quality.append([hour, avg_score, idx])
+
+    # Salva general_quality su Firestore
+    general_quality_dicts = [
+        {'data': hour, 'avg_score': avg_score, 'index': idx}
+        for hour, avg_score, idx in general_quality
+    ]
+    db.collection('valori').document('media').set({'readings': general_quality_dicts})
 
 
     return render_template(
@@ -184,8 +285,68 @@ def grafici():
         data_co=json.dumps(co),
         data_pm10=json.dumps(pm10),
         data_pm25=json.dumps(pm25),
-        station_coords=json.dumps(station_coords)
+        station_coords=json.dumps(station_coords),
+        item_ranges=json.dumps(item_ranges),
+        general_quality=json.dumps(general_quality)
     )
+
+def f_next_date(last_hour):
+    # Se last_hour è una stringa, converti in datetime
+    if isinstance(last_hour, str):
+        last_hour = datetime.strptime(last_hour, "%Y-%m-%d %H:%M:%S")
+    next_hour = last_hour + timedelta(hours=1)
+    return next_hour.strftime("%Y-%m-%d %H:%M:%S")
+
+@app.route('/previsioni')
+def previsione():
+    time.sleep(5)  # Simula un ritardo per la previsione
+    
+    # Recupera la serie storica della qualità dell'aria generale
+    entity = db.collection('valori').document('media').get()
+    if entity.exists:
+        readings = entity.to_dict()['readings']
+        x2 = []
+        for d in readings:
+            x2.append([d['data'], d['avg_score']])
+        
+        if len(x2) < 3:
+            return 'not enough data', 400
+        
+        model = load('model.joblib')
+        predictions = []
+        last_hour = x2[-1][0]
+        first_last_hour = last_hour
+        x2_serializable = []
+
+        for i in range(24):
+            next_hour = f_next_date(last_hour)
+            # Usa le ultime 3 osservazioni per la previsione
+            history = [x2[-3][1], x2[-2][1], x2[-1][1]]
+            # Elimina warning sklearn passando un DataFrame con nomi colonne
+            feature_names = ['val-1', 'val-2', 'val-3']
+            input_df = pd.DataFrame([history], columns=feature_names)
+            pred = model.predict(input_df)[0]
+            predictions.append({'data': next_hour, 'avg_score': float(pred)})
+            
+            x2.append([next_hour, float(pred)])
+            last_hour = next_hour  # Aggiorna l'ora per la prossima iterazione
+
+        x2_serializable = [
+            [dt.strftime("%Y-%m-%d %H:%M:%S") if isinstance(dt, datetime) else dt, val]
+            for dt, val in x2
+        ]
+
+        # Passa predictions come JSON al template
+        return render_template(
+            'previsioni.html',
+            predictions=json.dumps(x2_serializable),
+            predictions_data=predictions,
+            history=x2_serializable,
+            first_last_hour=first_last_hour
+        )
+    else:
+        return 'not found', 404
+
 
 
 
@@ -195,4 +356,4 @@ def grafici():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    app.run(host='0.0.0.0', debug=True)
